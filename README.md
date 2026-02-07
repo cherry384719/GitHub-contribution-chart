@@ -34,7 +34,7 @@ npm install
 node crawler.js
 
 # 测试
-curl http://localhost:3000/torvalds -o chart.png
+curl http://localhost:3000/your-github-name -o chart.png
 ```
 
 ### Docker 运行
@@ -45,7 +45,7 @@ docker build -t github-chart .
 docker run -d -p 7860:7860 github-chart
 
 # 测试
-curl http://localhost:7860/torvalds -o chart.png
+curl http://localhost:7860/your-github-name -o chart.png
 ```
 
 ## 📖 使用方法
@@ -61,15 +61,15 @@ GET /health                 # 健康检查
 ### 在 HTML 中使用
 
 ```html
-<img src="http://localhost:3000/torvalds" alt="GitHub Chart">
-<img src="http://localhost:3000/torvalds?theme=dracula" alt="GitHub Chart">
+<img src="http://localhost:3000/your-github-name" alt="GitHub Chart">
+<img src="http://localhost:3000/your-github-name?theme=dracula" alt="GitHub Chart">
 ```
 
 ### 在 Markdown 中使用
 
 ```markdown
-![GitHub Chart](http://localhost:3000/torvalds)
-![GitHub Chart](http://localhost:3000/torvalds?theme=halloween)
+![GitHub Chart](http://localhost:3000/your-github-name)
+![GitHub Chart](http://localhost:3000/your-github-name?theme=halloween)
 ```
 
 ## 🎨 主题列表
@@ -91,14 +91,20 @@ GET /health                 # 健康检查
 | `solarizedDark` | Solarized 深色 |
 | `solarizedLight` | Solarized 浅色 |
 
+默认URL`http://localhost:3000/your-github-name`的显示主题为`standard`，如需更改，在此基础上加上`?theme=`，后面的内容替换为列表中的主题，例如：`http://localhost:3000/your-github-name?theme=halloween`
+
 ## 🐳 部署方案
 
-### Hugging Face Spaces（推荐）
+### Hugging Face Spaces（推荐！免费，空间永久存在）
 
 1. 创建新 Space，选择 Docker SDK，默认为 blank（空）
 2. 上传所有文件
 3. 等待自动构建
-4. 访问：`https://YOUR_USERNAME-YOUR_SPACE.hf.space/username`
+4. 访问：`https://YOUR_USERNAME-YOUR_SPACE.hf.space/<your-github-name>`
+
+若你的Hugging Face账号名称为`zhangsan`，创建的Space空间名称为`ABC-123`，那么自动构建完成后的访问链接为：`https://zhangsan-ABC-123.hf.space/<your-github-name>`
+
+> 该空间在一段时间没有活动后会休眠，再次启动需要耗费较长时间，所以推荐使用 https://uptimerobot.com 自动机器人来监控服务，保持空间持续活动，监控url为 https://https://YOUR_USERNAME-YOUR_SPACE.hf.space/health，间隔时长可设为5-15分钟。
 
 ### Railway / Render
 

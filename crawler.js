@@ -56,7 +56,7 @@ async function initBrowser() {
 // 核心生成函数（带重试机制）
 async function generateChart(username, theme = 'standard', retryCount = 0) {
   const MAX_RETRIES = 2;
-  const url = 'https://github-contributions-chart-nine.vercel.app/';
+  const url = 'https://github-contributions.vercel.app/';  // 个人部署网站：https://github-contributions-chart-nine.vercel.app/
   const browserInstance = await initBrowser();
   const page = await browserInstance.newPage();
 
