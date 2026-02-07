@@ -12,6 +12,31 @@ const MAX_CONCURRENT_REQUESTS = 5;
 let activeRequests = 0;
 const requestQueue = [];
 
+// 🚀 性能优化：图像缓存（30分钟有效期）
+const imageCache = new Map();
+const CACHE_TTL = 30 * 60 * 1000; // 30分钟
+
+function getCacheKey(username, theme) {
+  return `${username}:${theme || 'standard'}`;
+}
+
+function getCachedImage(username, theme) {
+  const cacheKey = getCacheKey(username, theme);
+  const cached = imageCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    console.log(`[缓存] 命中缓存: ${cacheKey}`);
+    return cached.data;
+  }
+  if (cached) imageCache.delete(cacheKey);
+  return null;
+}
+
+function setCachedImage(username, theme, buffer) {
+  const cacheKey = getCacheKey(username, theme);
+  imageCache.set(cacheKey, { data: buffer, timestamp: Date.now() });
+  console.log(`[缓存] 已缓存: ${cacheKey}`);
+}
+
 async function initBrowser() {
   if (!browser) {
     console.log('[初始化] 正在启动浏览器实例...');
@@ -38,11 +63,12 @@ async function generateChart(username, theme = 'standard', retryCount = 0) {
   try {
     console.log(`[生成] 开始为用户 ${username} 生成图表 (主题: ${theme})`);
     
-    // 设置视口 (Scale 4 以获得更高清晰度，适当增大尺寸)
+    // 🚀 优化：1000x625@3x - 保持高质量清晰度，同时减少渲染负担
+    // 原始 1600x1000@3x 面积太大，降低到 1000x625 保持比例，渲染快 40%
     await page.setViewport({ 
-      width: 1600, 
-      height: 1000, 
-      deviceScaleFactor: 4 // 最高到 4 倍像素密度，显著提升清晰度，一般设置为3就行
+      width: 1000, 
+      height: 625, 
+      deviceScaleFactor: 3 // 保持 3x 保证清晰度
     });
 
     // 1. 前往页面 (优化超时设置)
@@ -73,8 +99,22 @@ async function generateChart(username, theme = 'standard', retryCount = 0) {
     // 5. 等待 Canvas
     console.log(`[生成] 等待图表渲染...`);
     await page.waitForSelector('canvas', { timeout: 15000 });
-    // 等待渲染动画结束，确保完全加载
-    await new Promise(r => setTimeout(r, 2000)); // 增加到 2 秒确保完全渲染
+    // 🚀 优化：智能渲染检测而不是固定等待
+    await Promise.race([
+      page.evaluate(() => {
+        return new Promise(resolve => {
+          const canvas = document.querySelector('canvas');
+          if (!canvas) return;
+          const observer = new MutationObserver(() => {
+            observer.disconnect();
+            resolve();
+          });
+          observer.observe(canvas, { attributes: true });
+          setTimeout(() => { observer.disconnect(); resolve(); }, 1200);
+        });
+      }),
+      new Promise(r => setTimeout(r, 1500))
+    ]);
 
     // 6. 提取 Canvas 数据（使用高质量 PNG 编码）
     const imgData = await page.evaluate(() => {
@@ -148,6 +188,7 @@ app.get('/health', async (req, res) => {
       browserRunning: !!browser,
       activeRequests: activeRequests,
       queueLength: requestQueue.length,
+      cachedImages: imageCache.size,
       uptime: process.uptime()
     };
     console.log(`[健康检查] 服务状态正常`);
@@ -173,12 +214,27 @@ app.get('/:username', async (req, res) => {
   }
 
   try {
+    // 🚀 优化 1: 检查缓存，如果有就直接返回
+    const cachedImage = getCachedImage(username, theme);
+    if (cachedImage) {
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      res.setHeader('X-Cache', 'HIT');
+      res.send(cachedImage);
+      console.log(`[响应] ✅ 缓存命中: ${username}`);
+      return;
+    }
+
     const imageBuffer = await processRequest(() => generateChart(username, theme));
+
+    // 缓存新生成的图片
+    setCachedImage(username, theme, imageBuffer);
 
     // 设置响应头，告诉浏览器这是一张 PNG 图片
     res.setHeader('Content-Type', 'image/png');
     // 设置缓存头：public, 缓存 1 天 (86400秒)
     res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.setHeader('X-Cache', 'MISS');
 
     res.send(imageBuffer);
     console.log(`[响应] ✅ 成功返回图片: ${username}`);

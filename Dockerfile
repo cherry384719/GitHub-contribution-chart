@@ -31,4 +31,4 @@ ENV PORT=7860
 EXPOSE 7860
 
 # 启动程序
-CMD ["node", "new_Crawler.js"]
+CMD ["node", "crawler.js"]
