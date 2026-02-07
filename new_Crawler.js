@@ -1,7 +1,7 @@
 import express from 'express';
 import puppeteer from 'puppeteer';
 const app = express();
-const port = process.env.PORT || 3000; // Railway 会设置 PORT 环境变量
+const port = process.env.PORT || 3000;
 
 // 启动浏览器实例（为了性能，最好复用浏览器实例，或者使用连接池）
 // 在简单版中，我们为每个请求启动新页面，但可以通过全局 browser 优化
@@ -16,7 +16,7 @@ async function initBrowser() {
   if (!browser) {
     console.log('[初始化] 正在启动浏览器实例...');
     browser = await puppeteer.launch({
-      headless: true, // 修正：使用 true 而不是 "new"
+      headless: true, 
       args: [
         '--no-sandbox', 
         '--disable-setuid-sandbox',
@@ -38,11 +38,11 @@ async function generateChart(username, theme = 'standard', retryCount = 0) {
   try {
     console.log(`[生成] 开始为用户 ${username} 生成图表 (主题: ${theme})`);
     
-    // 设置视口 (Scale 3 以获得更高清晰度，适当增大尺寸)
+    // 设置视口 (Scale 4 以获得更高清晰度，适当增大尺寸)
     await page.setViewport({ 
       width: 1600, 
       height: 1000, 
-      deviceScaleFactor: 3 // 提高到 3 倍像素密度，显著提升清晰度
+      deviceScaleFactor: 4 // 最高到 4 倍像素密度，显著提升清晰度，一般设置为3就行
     });
 
     // 1. 前往页面 (优化超时设置)
@@ -139,6 +139,25 @@ function validateUsername(username) {
   return usernameRegex.test(username);
 }
 
+// 健康检查端点
+app.get('/health', async (req, res) => {
+  try {
+    const status = {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      browserRunning: !!browser,
+      activeRequests: activeRequests,
+      queueLength: requestQueue.length,
+      uptime: process.uptime()
+    };
+    console.log(`[健康检查] 服务状态正常`);
+    res.json(status);
+  } catch (error) {
+    console.error(`[健康检查] 服务异常:`, error.message);
+    res.status(503).json({ status: 'error', message: error.message });
+  }
+});
+
 // 路由定义： /:username
 // 例如: http://localhost:3000/sallar?theme=halloween
 app.get('/:username', async (req, res) => {
@@ -159,7 +178,6 @@ app.get('/:username', async (req, res) => {
     // 设置响应头，告诉浏览器这是一张 PNG 图片
     res.setHeader('Content-Type', 'image/png');
     // 设置缓存头：public, 缓存 1 天 (86400秒)
-    // 这很重要，因为爬虫生成一次需要几秒钟，不想让 GitHub 每次都来请求
     res.setHeader('Cache-Control', 'public, max-age=86400');
 
     res.send(imageBuffer);
@@ -168,25 +186,6 @@ app.get('/:username', async (req, res) => {
   } catch (error) {
     console.error(`[响应] ❌ 请求失败: ${username}`, error.message);
     res.status(500).send('生成图片失败，请检查用户名是否正确或稍后重试');
-  }
-});
-
-// 健康检查端点
-app.get('/health', async (req, res) => {
-  try {
-    const status = {
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      browserRunning: !!browser,
-      activeRequests: activeRequests,
-      queueLength: requestQueue.length,
-      uptime: process.uptime()
-    };
-    console.log(`[健康检查] 服务状态正常`);
-    res.json(status);
-  } catch (error) {
-    console.error(`[健康检查] 服务异常:`, error.message);
-    res.status(503).json({ status: 'error', message: error.message });
   }
 });
 
