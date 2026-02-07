@@ -68,7 +68,7 @@ async function generateChart(username, theme = 'standard', retryCount = 0) {
     await page.setViewport({ 
       width: 1000, 
       height: 625, 
-      deviceScaleFactor: 3 // 保持 3x 保证清晰度
+      deviceScaleFactor: 3 // 保持 3x 保证清晰度，最高画质为 4
     });
 
     // 1. 前往页面 (优化超时设置)
