@@ -4,7 +4,9 @@
   "type": "module",
   "main": "new_Crawler.js",
   "dependencies": {
-    "express": "^4.19.2",
-    "puppeteer": "^24.1.1"
+    "express": "^4.22.1",
+    "lru-cache": "^11.2.6",
+    "puppeteer": "^24.37.2",
+    "sharp": "^0.34.5"
   }
 }
